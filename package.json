@@ -1,0 +1,34 @@
+{
+  "name": "island-micro-frontend-webpack-loader",
+  "sideEffects": false,
+  "version": "0.0.14",
+  "description": "island/webpack microfrontend loader",
+  "main": "./lib/index.js",
+  "module": "./lib-es/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "yarn build:cjs && yarn build:es",
+    "build:cjs": "rimraf ./lib && tsc --project tsconfig.json --outDir lib --module commonjs",
+    "build:es": "rimraf ./lib-es && tsc --project tsconfig.json",
+    "prepublishOnly": "yarn build"
+  },
+  "author": "CreeJee",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/react-dev-utils": "^9.0.11",
+    "html-webpack-plugin": "^5.5.0",
+    "rimraf": "^3.0.2",
+    "webpack": "^5.74.0"
+  },
+  "dependencies": {
+    "css-minimizer-webpack-plugin": "^4.2.1",
+    "react-dev-utils": "^12.0.1"
+  },
+  "peerDependencies": {
+    "webpack": "^5.0.0"
+  },
+  "directories": {
+    "lib": "lib"
+  }
+}
