@@ -16,7 +16,7 @@ export class IslandManifestPlugin implements WebpackPluginInstance {
     }
 
     apply(compiler: webpack.Compiler) {
-        compiler.hooks.emit.tapPromise('CreateFilePlugin', async compilation => {
+        compiler.hooks.emit.tapPromise('CreateIslandManifestPlugin', async compilation => {
             this.createManifest(compilation);
         });
     }

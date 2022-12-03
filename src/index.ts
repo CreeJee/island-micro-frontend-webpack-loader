@@ -1,6 +1,6 @@
 import webpack, { RuleSetRule } from 'webpack';
 import { ModuleFederationConfig, IslandPluginOptions, WebpackConfig, PageModuleStructure } from './@types';
-import { addBeforeLoader, getLoader, loaderByName, removeLoaders } from "./injectLoader"
+import { addBeforeLoader, getLoader, loaderByName, removeLoaders } from "./lib/injectLoader"
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import path from "path"
 import { defaultOptions } from './lib/defaultOptions';
