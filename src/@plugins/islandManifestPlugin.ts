@@ -9,15 +9,29 @@ export class IslandManifestPlugin implements WebpackPluginInstance {
         this.options = Object.assign(config, defaultOptions)
     }
     createManifest(compilation: webpack.Compilation) {
+        const contentSize = JSON.stringify(this.options);
+        const name = 'island-manifest.json';
         compilation.emitAsset(
-            'island-manifest.json',
-            new RawSource(JSON.stringify(this.options))
+            name,
+            new RawSource(contentSize),
+            {
+                immutable: true,
+                size: Buffer.from(contentSize).length,
+                name,
+                
+            }
         )
     }
 
     apply(compiler: webpack.Compiler) {
-        compiler.hooks.emit.tapPromise('CreateIslandManifestPlugin', async compilation => {
-            this.createManifest(compilation);
+        compiler.hooks.thisCompilation.tap('CreateIslandManifestPlugin', compilation => {
+            compilation.hooks.processAdditionalAssets.tap(
+                {
+                    name: 'CreateIslandManifestPlugin',
+                }, () => {
+                    this.createManifest(compilation)
+                }
+            )
         });
     }
 }
