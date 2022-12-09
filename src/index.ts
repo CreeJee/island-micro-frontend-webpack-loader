@@ -1,6 +1,6 @@
 import webpack, { RuleSetRule } from 'webpack';
 import { ModuleFederationConfig, IslandPluginOptions, WebpackConfig, PageModuleStructure } from './@types';
-import { addBeforeLoader, getLoader, loaderByName, removeLoaders } from "./lib/injectLoader"
+import { addAfterLoader, addBeforeLoader, getLoader, loaderByName, removeLoaders } from "./lib/injectLoader"
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import path from "path"
 import { defaultOptions } from './lib/defaultOptions';
@@ -71,6 +71,7 @@ export const overrideWebpackSetting = (
         new IslandManifestPlugin(mergedConfig),
     ];
 
+    // https://github.com/tabatkins/parse-css
     if (useShadowDom) {
         const { isFound, match } = getLoader(webpackConfig, loaderByName('style-loader'));
         const styleLoaderData = {
@@ -78,7 +79,9 @@ export const overrideWebpackSetting = (
             options: {
                 ...(match && typeof match.loader === 'object' ? match.loader : {}),
                 injectType: "styleTag",
+
                 styleTagTransform: function (css: string, style: HTMLStyleElement) {
+
 
 
                     //logic
@@ -86,6 +89,23 @@ export const overrideWebpackSetting = (
                     var moduleFederatonStyleKey = Symbol.for("@shadow-dom/mount-root");
                     // @ts-ignore
                     var moduleStore = window[moduleFederatonStyleKey] as unknown as Record<string, Node>;
+                    var bindStyleTag = function (css: string, style?: HTMLStyleElement) {
+                        if (!style) {
+                            style = document.createElement("style");
+                        }
+                        style.innerHTML = css;
+                        if (moduleStore && moduleNamespace) {
+                            var $mountedDom = moduleStore[moduleNamespace];
+                            if (
+                                $mountedDom instanceof Node
+                            ) {
+                                $mountedDom.appendChild(style);
+                                return;
+                            }
+                        }
+                        document.head.appendChild(style);
+                    }
+
 
 
                     //append fontStyle
@@ -96,50 +116,52 @@ export const overrideWebpackSetting = (
                         if (!(isFontFace || isCssImport)) {
                             break;
                         }
-                        var cssContent = ""
+                        var cssContent = "";
                         var cursorStart = null;
-                        var cursorEnd = null
+                        var cursorEnd = null;
                         if (isFontFace) {
+                            var cssNode = document.createElement('style');
                             cursorStart = css.indexOf("@font-face");
                             cursorEnd = css.indexOf("}", cursorStart) + 1;
+                            cssNode.innerHTML = cssContent;
+                            document.head.appendChild(cssNode);
                         }
                         if (isCssImport) {
-                            // reference: https://regex101.com/r/X6B10k/1
-                            var regex = /@import\s*(?:(['"])?(?:\\\1|.)*\1.*|url\(\s*(?:(['"])?(?:\\\2|.)*\2|(?:\\[\)\'\"]|[^'")])*)\s*\).*);/im
+                            var linkTag = document.createElement('link');
+                            var regex = /(?:(?<=@import\s*(['"]|url\()\s*)((?:\S|\\\1)+)\s*(?:\1|\))\s*\)?\s?(.*?);)/igm
                             var matched = regex.exec(css);
                             if (matched) {
+
                                 cursorStart = matched.index;
                                 cursorEnd = cursorStart + matched[0].length;
+
+                                var url = matched[2];
+                                var mediaQuery = matched[3];
+                                linkTag.rel = 'stylesheet';
+                                linkTag.type = 'text/css';
+                                if (url) {
+                                    linkTag.href = url;
+                                }
+                                if (mediaQuery) {
+                                    linkTag.media = mediaQuery;
+                                }
                             }
                         }
                         if (cursorStart !== null && cursorEnd !== null) {
                             cssContent = css.slice(cursorStart, cursorEnd);
                             css = css.slice(0, cursorStart) + css.slice(cursorEnd);
-
-
-                            var cssNode = document.createElement('style');
-                            cssNode.innerHTML = cssContent;
-                            document.head.appendChild(cssNode);
                         }
                     }
 
                     // append style
-                    style.innerHTML = css;
-                    if (moduleStore && moduleNamespace) {
-                        var $mountedDom = moduleStore[moduleNamespace];
-                        if (
-                            $mountedDom instanceof Node
-                        ) {
-                            $mountedDom.appendChild(style);
-                            return;
-                        }
-                    }
-                    document.head.appendChild(style);
+                    bindStyleTag(css, style)
                 }
             },
         }
         externalWebpackPlugins.push(
-            new webpack.EnvironmentPlugin({ KEY_MODE: modulefederationConfig.name })
+            new webpack.EnvironmentPlugin({
+                KEY_MODE: modulefederationConfig.name
+            })
         );
         if (isFound) {
             match.parent[match.index] = styleLoaderData;
