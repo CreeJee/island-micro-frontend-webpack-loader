@@ -145,10 +145,11 @@ export const overrideWebpackSetting = (
                                 if (mediaQuery) {
                                     linkTag.media = mediaQuery;
                                 }
-                                linkTag.addEventListener('load', function () {
+                                linkTag.addEventListener('load', function onLoadLinkTag() {
                                     // 재귀적으로 script 구조분해 후 특수 태그들에 따라 폰트 분리.
                                     styleTagTransform(this.textContent ?? '',document.createElement('style'));
                                     this.remove();
+                                    this.removeEventListener('load', onLoadLinkTag);
                                 })
                             }
                         }
