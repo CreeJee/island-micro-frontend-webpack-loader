@@ -80,7 +80,7 @@ export const overrideWebpackSetting = (
                 ...(match && typeof match.loader === 'object' ? match.loader : {}),
                 injectType: "styleTag",
 
-                styleTagTransform: function (css: string, style: HTMLStyleElement) {
+                styleTagTransform: function styleTagTransform (css: string, style: HTMLStyleElement) {
 
 
 
@@ -145,6 +145,11 @@ export const overrideWebpackSetting = (
                                 if (mediaQuery) {
                                     linkTag.media = mediaQuery;
                                 }
+                                linkTag.addEventListener('load', function () {
+                                    // 재귀적으로 script 구조분해 후 특수 태그들에 따라 폰트 분리.
+                                    styleTagTransform(this.textContent ?? '',document.createElement('style'));
+                                    this.remove();
+                                })
                             }
                         }
                         if (cursorStart !== null && cursorEnd !== null) {
