@@ -1,5 +1,5 @@
 import webpack, { RuleSetRule } from 'webpack';
-import { ModuleFederationConfig, IslandPluginOptions, WebpackConfig, PageModuleStructure } from './@types';
+import { ModuleFederationConfig, IslandPluginOptions, WebpackConfig, PageModuleStructure, IslandManifestContent } from './@types';
 import { addAfterLoader, addBeforeLoader, getLoader, loaderByName, removeLoaders } from "./lib/injectLoader"
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import path from "path"
@@ -7,6 +7,7 @@ import { defaultOptions } from './lib/defaultOptions';
 import { IslandManifestPlugin } from './@plugins/islandManifestPlugin';
 //@ts-ignore
 import { parseOptions as parseOptionsOriginal } from "webpack/lib/container/options"
+import { CracoConfig, CracoPlugin} from "@craco/types";
 
 type ContainerOptionsFormat<T> =
     | Record<string, string | string[] | T>
@@ -19,7 +20,7 @@ const parseOptions = <T, R>(
 ): [string, R][] => parseOptionsOriginal(options, normalizeSimple, normalizeOptions);
 
 
-export const overrideWebpackSetting = (
+export const islandWebpackSetting = (
     webpackConfig: WebpackConfig,
     modulefederationConfig: ModuleFederationConfig,
     config: IslandPluginOptions,
@@ -50,7 +51,7 @@ export const overrideWebpackSetting = (
         defaultOptions,
         moduleStructureConfig,
         config,
-    );
+    ) as IslandManifestContent;
     const { useNamedChunkIds, useShadowDom } = mergedConfig
     //override config
     webpackConfig.output = {
@@ -117,12 +118,18 @@ export const overrideWebpackSetting = (
                             break;
                         }
                         var cssContent = "";
-                        var cursorStart = null;
-                        var cursorEnd = null;
                         if (isFontFace) {
                             var cssNode = document.createElement('style');
-                            cursorStart = css.indexOf("@font-face");
-                            cursorEnd = css.indexOf("}", cursorStart) + 1;
+                            var cursorStart = css.indexOf("@font-face");
+                            var cursorEnd = css.indexOf("}", cursorStart);
+                            cssContent = css.substring(cursorStart, cursorEnd);
+                            if(!cssContent.includes("font-display")) {
+                                cssContent += `font-display: ${mergedConfig.fontDisplay};`
+                            }
+                            cssContent += "}";
+                            cursorEnd += 1;
+                            css = css.slice(0, cursorStart) + css.slice(cursorEnd);
+
                             cssNode.innerHTML = cssContent;
                             document.head.appendChild(cssNode);
                         }
@@ -152,10 +159,6 @@ export const overrideWebpackSetting = (
                                     this.removeEventListener('load', onLoadLinkTag);
                                 })
                             }
-                        }
-                        if (cursorStart !== null && cursorEnd !== null) {
-                            cssContent = css.slice(cursorStart, cursorEnd);
-                            css = css.slice(0, cursorStart) + css.slice(cursorEnd);
                         }
                     }
 
@@ -193,4 +196,26 @@ export const overrideWebpackSetting = (
     }
     return webpackConfig;
 };
-export default overrideWebpackSetting;
+export default islandWebpackSetting;
+
+
+export const cracoIslandPlugin = (
+    config: IslandPluginOptions,
+    modulefederationConfig: ModuleFederationConfig,
+): CracoPlugin => ({
+    overrideWebpackConfig({webpackConfig}){
+        return islandWebpackSetting(
+            webpackConfig,
+            modulefederationConfig,
+            config
+        );
+    },
+    overrideDevServerConfig: ({ devServerConfig }) => {
+        devServerConfig.headers = {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "*",
+          "Access-Control-Allow-Headers": "*",
+        };
+        return devServerConfig;
+    },
+})
